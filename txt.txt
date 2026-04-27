@@ -1,1 +1,23 @@
-Workin on it
+Let me know if any help required, like if any document content needs to be sharred or anything u get stuck at,  try using https://www.dcode.fr/ if it helps.
+---------------------------------------------
+I’m blocked at the point where the trail leaves the public web.
+
+What I found so far:
+
+1. The best public match for `sp3ctr4l_ghost` is a private Pinterest profile under the variant `sp3ctr4lgh0st`, with display name **Sp3ctr4lGhost**. ([Pinterest][1])
+2. Search snippets also expose a related Pinterest path using `ajbasalay`, still showing **Sp3ctr4lGhost**. ([Pinterest][2])
+3. That `ajbasalay` alias leads to a Sketchfab profile/model: **“Iphone Magsafe Phone Stand”** by `ajbasalay`. The visible page text does not contain a flag. ([Sketchfab][3])
+4. Challenge 2 almost certainly expects an I2P step. I can’t access `.i2p` sites from this environment, and the public web did not expose a usable eepsite address.
+
+Please share **one of these**, whichever you have:
+
+* the challenge document / attachment content,
+* a screenshot or HTML/page text from the Pinterest profile,
+* the downloadable Sketchfab model files, if available,
+* or the I2P page content after trying likely candidates such as `sp3ctr4lgh0st.i2p`, `sp3ctr4lghost.i2p`, `sp3ctr4l_ghost.i2p`, or `ajbasalay.i2p`.
+
+Once you share that, I can continue into the encrypted/hidden-web part and then the “other half / door” infrastructure clue.
+
+[1]: https://www.pinterest.com/sp3ctr4lgh0st/?utm_source=chatgpt.com "Sp3ctr4lGhost"
+[2]: https://ar.pinterest.com/ajbasalay/?utm_source=chatgpt.com "Sp3ctr4lGhost"
+[3]: https://sketchfab.com/3d-models/iphone-magsafe-phone-stand-fbd487cdb0b348dba6e6b99b3b9f3283?utm_source=chatgpt.com "Iphone Magsafe Phone Stand - 3D model by ajbasalay"
