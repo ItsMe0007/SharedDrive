@@ -1,72 +1,175 @@
-for pharma supply-chain provider question 
--------------------------------------------
-I couldn’t truthfully recover the flag from this sandbox.
+fir C1 C2 C3 
 
-What I **did verify**: the credentials are valid and resolve to IAM user `arn:aws:iam::276278912943:user/inspector-ro` in account `276278912943`. Other services I probed, including IAM and S3, are blocked by a permissions boundary, not by invalid credentials. ([Jina AI][1])
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-The intended path is very likely **Amazon Inspector v2**: the user is named `inspector-ro`, and Inspector’s `ListFindings`, `BatchGetCodeSnippet`, and `BatchGetFindingDetails` APIs expose findings/code snippets that fit the “TODO / build system / ledger” clue. Those APIs are signed **POST** endpoints, for example `BatchGetCodeSnippet` is `POST /codesnippet/batchget`, and this environment only let me issue GET requests to AWS. ([AWS Documentation][2])
+I found the public trail, but I **did not recover final `FLAG{}` values** from the indexed web. The remaining steps appear to require actually opening the I2P/Tor destinations, which I can’t validate from this environment.
 
-Run this locally with the provided CTF creds; it should print any flag found in Inspector findings/details/snippets:
+### What I found
 
-```python
-import os, re, json, boto3
+The Reddit account exists as `u/sp3ctr4l_ghost`. It has two removed posts: one in `r/TOR` titled “Moved platforms, same handle” and one in `r/i2p` titled “Anyone still active on sp3ctr4l_ghost? moved platforms.” The Reddit profile also exposes a Mastodon social link. ([Reddit][1])
 
-REGION = "us-east-1"
-FLAG_RE = re.compile(r'(?i)(?:flag|ctf|northchain|pwnedlabs)\{[^}]+\}')
+That Mastodon account is `@sp3ctr4l_ghost@mastodon.social`, display name **op3r4t0r**. Its bio says: “opsec enthusiast. i2p advocate. gone dark.” It also has a field called **“backup node for ops”** containing this onion fragment:
 
-session = boto3.Session(region_name=REGION)
-inspector = session.client("inspector2")
-
-def find_flags(obj):
-    text = json.dumps(obj, default=str)
-    return sorted(set(FLAG_RE.findall(text)))
-
-def chunks(items, n):
-    for i in range(0, len(items), n):
-        yield items[i:i+n]
-
-all_findings = []
-next_token = None
-
-while True:
-    kwargs = {"maxResults": 100}
-    if next_token:
-        kwargs["nextToken"] = next_token
-
-    page = inspector.list_findings(**kwargs)
-    all_findings.extend(page.get("findings", []))
-
-    flags = find_flags(page)
-    for flag in flags:
-        print(flag)
-
-    next_token = page.get("nextToken")
-    if not next_token:
-        break
-
-arns = [f["findingArn"] for f in all_findings if "findingArn" in f]
-
-for batch in chunks(arns, 10):
-    for call in (
-        inspector.batch_get_finding_details,
-        inspector.batch_get_code_snippet,
-    ):
-        try:
-            resp = call(findingArns=batch)
-            for flag in find_flags(resp):
-                print(flag)
-        except Exception as e:
-            print(f"{call.__name__} failed: {e}")
+```text
+h5ufdibd6d5neookv7rrbushy4mad[.]onion
 ```
 
-Set the creds first:
+([Mastodon hosted on mastodon.social][2])
 
-```bash
-export AWS_ACCESS_KEY_ID='AKIAUAU4BU6X3RQ3FBP2'
-export AWS_SECRET_ACCESS_KEY='<the secret from the prompt>'
-export AWS_DEFAULT_REGION='us-east-1'
-python3 solve.py
+A Mastodon post then says:
+
+```text
+half of my happiness is for you ...........h5ufdibd6d5neookv7rrbushy4mad[.]onion
+The other half of pain........... in your @@@
 ```
 
-[1]: https://r.jina.ai/https%3A//sts.us-east-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAUAU4BU6X3RQ3FBP2%2F20260427%2Fus-east-1%2Fsts%2Faws4_request&X-Amz-Date=20260427T192206Z&X-Amz-Expires=300&X-Amz-Signature=d0cfa9e99fa360c3e3f707697191d81623059fc9d08376d80f9122f64d34bbc0&X-Amz-SignedHeaders=host "https://r.jina.ai/https%3A//sts.us-east-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAUAU4BU6X3RQ3FBP2%2F20260427%2Fus-east-1%2Fsts%2Faws4_request&X-Amz-Date=20260427T192206Z&X-Amz-Expires=300&X-Amz-Signature=d0cfa9e99fa360c3e3f707697191d81623059fc9d08376d80f9122f64d34bbc0&X-Amz-SignedHeaders=host"
-[2]: https://docs.aws.amazon.com/inspector/v2/APIReference/API_ListFindings.html "ListFindings - Inspector"
+That lines up with Challenge 3: you have half of a Tor onion, but not the other half or the “door”/port yet. ([Mastodon hosted on mastodon.social][3])
+
+### Likely Challenge 2 I2P address
+
+The Mastodon image edit history leaks three Litterbox/Catbox filenames: ([Mastodon hosted on mastodon.social][4])
+
+```text
+d08ee0yly3u8sr1g
+enijzqrvw1c80oaw
+00bnxs6yq9x9ifvg
+```
+
+Converting non-I2P-base32-looking leetspeak digits:
+
+```text
+0 -> o
+1 -> l
+8 -> b
+9 -> g
+```
+
+gives:
+
+```text
+dobeeoyly3ubsrlg
+enijzqrvwlcbooaw
+oobnxs6yqgxgifvg
+```
+
+Concatenated:
+
+```text
+dobeeoyly3ubsrlgenijzqrvwlcbooawoobnxs6yqgxgifvg
+```
+
+That is 48 chars. A b32 I2P address needs the missing ending before `.b32.i2p`. The post text:
+
+```text
+My cattttttt
+Litteerrrsss aaaa llooootttt
+```
+
+looks like repeated-letter encoding. Extra repeated letters over “My cat / Litters a lot” are:
+
+```text
+cattttttt      -> 6  -> F
+Litteerrrsss   -> 5  -> E
+aaaa           -> 3  -> C
+llooootttt     -> 7  -> G
+```
+
+So the best candidate I2P destination I found is:
+
+```text
+http://dobeeoyly3ubsrlgenijzqrvwlcbooawoobnxs6yqgxgifvgfecg.b32.i2p/
+```
+
+I2P docs indicate `.i2p` browsing normally requires routing the browser through the local I2P HTTP proxy, commonly `127.0.0.1:4444`. ([I2P][5])
+
+### Challenge 3 status
+
+Known onion half:
+
+```text
+h5ufdibd6d5neookv7rrbushy4mad
+```
+
+I tested the obvious guess that “your @@@” means the Mastodon handle/domain normalized into the missing half, but it **does not validate as a Tor v3 onion address**. So the likely intended path is:
+
+```text
+Reddit -> Mastodon -> leaked Litterbox/edit-history -> I2P b32 site -> remaining onion half + door/port -> flag
+```
+
+The next place to open locally is:
+
+```text
+http://dobeeoyly3ubsrlgenijzqrvwlcbooawoobnxs6yqgxgifvgfecg.b32.i2p/
+```
+
+Once that loads, it should reveal either the Challenge 2 flag directly or an encrypted flag, and probably the missing half/port needed for Challenge 3.
+
+[1]: https://www.reddit.com/user/sp3ctr4l_ghost/ "https://www.reddit.com/user/sp3ctr4l_ghost/"
+[2]: https://mastodon.social/api/v1/accounts/lookup?acct=sp3ctr4l_ghost "https://mastodon.social/api/v1/accounts/lookup?acct=sp3ctr4l_ghost"
+[3]: https://mastodon.social/api/v1/accounts/116465043272566809/statuses "mastodon.social"
+[4]: https://mastodon.social/api/v1/statuses/116465354105281038/history "mastodon.social"
+[5]: https://i2p.net/en/docs/guides/gettingstarted/?utm_source=chatgpt.com "Getting started with I2P: a complete beginner's guide | Docs"
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+give me a summary for all above 3 in short 
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+### Challenge 1
+
+Start from Reddit user:
+
+```text
+u/sp3ctr4l_ghost
+```
+
+Trail found there points to Mastodon:
+
+```text
+@sp3ctr4l_ghost@mastodon.social
+```
+
+The Mastodon profile/posts are the key public trace. Challenge 1 flag may be directly on one of those public posts/profile fields, but I did **not** recover the exact `FLAG{}` yet.
+
+---
+
+### Challenge 2
+
+Mastodon edit/history hints leak parts that likely form an I2P address.
+
+Best candidate I2P URL:
+
+```text
+http://dobeeoyly3ubsrlgenijzqrvwlcbooawoobnxs6yqgxgifvgfecg.b32.i2p/
+```
+
+You need to set up I2P and open that URL through the I2P browser/proxy. The flag should appear there directly or encrypted.
+
+---
+
+### Challenge 3
+
+Mastodon gives half of a Tor onion:
+
+```text
+h5ufdibd6d5neookv7rrbushy4mad
+```
+
+Hint says “Half of something is nothing. Find the other half. Then find the door.”
+
+So Challenge 3 likely needs:
+
+```text
+other half of onion + port/service door
+```
+
+The missing half is probably inside the I2P site from Challenge 2.
+
+---
+
+### Overall path
+
+```text
+Reddit → Mastodon → I2P site → full onion + port → final flag
+```
+
+What’s stuck: I can’t access/verify I2P or Tor hidden services from here, so you need to open the I2P link locally to continue.
+
