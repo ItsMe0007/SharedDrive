@@ -1,27 +1,72 @@
-Let me know if any help required, like if any document content needs to be sharred or anything u get stuck at,  try using https://www.dcode.fr/ if it helps.
----------------------------------------------
-I’m blocked at the point where the trail leaves the public web.
+for pharma supply-chain provider question 
+-------------------------------------------
+I couldn’t truthfully recover the flag from this sandbox.
 
-What I found so far:
+What I **did verify**: the credentials are valid and resolve to IAM user `arn:aws:iam::276278912943:user/inspector-ro` in account `276278912943`. Other services I probed, including IAM and S3, are blocked by a permissions boundary, not by invalid credentials. ([Jina AI][1])
 
-1. The best public match for `sp3ctr4l_ghost` is a private Pinterest profile under the variant `sp3ctr4lgh0st`, with display name **Sp3ctr4lGhost**. ([Pinterest][1])
-2. Search snippets also expose a related Pinterest path using `ajbasalay`, still showing **Sp3ctr4lGhost**. ([Pinterest][2])
-3. That `ajbasalay` alias leads to a Sketchfab profile/model: **“Iphone Magsafe Phone Stand”** by `ajbasalay`. The visible page text does not contain a flag. ([Sketchfab][3])
-4. Challenge 2 almost certainly expects an I2P step. I can’t access `.i2p` sites from this environment, and the public web did not expose a usable eepsite address.
+The intended path is very likely **Amazon Inspector v2**: the user is named `inspector-ro`, and Inspector’s `ListFindings`, `BatchGetCodeSnippet`, and `BatchGetFindingDetails` APIs expose findings/code snippets that fit the “TODO / build system / ledger” clue. Those APIs are signed **POST** endpoints, for example `BatchGetCodeSnippet` is `POST /codesnippet/batchget`, and this environment only let me issue GET requests to AWS. ([AWS Documentation][2])
 
-Please share **one of these**, whichever you have:
+Run this locally with the provided CTF creds; it should print any flag found in Inspector findings/details/snippets:
 
-* the challenge document / attachment content,
-* a screenshot or HTML/page text from the Pinterest profile,
-* the downloadable Sketchfab model files, if available,
-* or the I2P page content after trying likely candidates such as `sp3ctr4lgh0st.i2p`, `sp3ctr4lghost.i2p`, `sp3ctr4l_ghost.i2p`, or `ajbasalay.i2p`.
+```python
+import os, re, json, boto3
 
-Once you share that, I can continue into the encrypted/hidden-web part and then the “other half / door” infrastructure clue.
+REGION = "us-east-1"
+FLAG_RE = re.compile(r'(?i)(?:flag|ctf|northchain|pwnedlabs)\{[^}]+\}')
 
-[1]: https://www.pinterest.com/sp3ctr4lgh0st/?utm_source=chatgpt.com "Sp3ctr4lGhost"
-[2]: https://ar.pinterest.com/ajbasalay/?utm_source=chatgpt.com "Sp3ctr4lGhost"
-[3]: https://sketchfab.com/3d-models/iphone-magsafe-phone-stand-fbd487cdb0b348dba6e6b99b3b9f3283?utm_source=chatgpt.com "Iphone Magsafe Phone Stand - 3D model by ajbasalay"
+session = boto3.Session(region_name=REGION)
+inspector = session.client("inspector2")
 
+def find_flags(obj):
+    text = json.dumps(obj, default=str)
+    return sorted(set(FLAG_RE.findall(text)))
 
-Retrying again
-running in 2 tabs for both, running since 15min in both 
+def chunks(items, n):
+    for i in range(0, len(items), n):
+        yield items[i:i+n]
+
+all_findings = []
+next_token = None
+
+while True:
+    kwargs = {"maxResults": 100}
+    if next_token:
+        kwargs["nextToken"] = next_token
+
+    page = inspector.list_findings(**kwargs)
+    all_findings.extend(page.get("findings", []))
+
+    flags = find_flags(page)
+    for flag in flags:
+        print(flag)
+
+    next_token = page.get("nextToken")
+    if not next_token:
+        break
+
+arns = [f["findingArn"] for f in all_findings if "findingArn" in f]
+
+for batch in chunks(arns, 10):
+    for call in (
+        inspector.batch_get_finding_details,
+        inspector.batch_get_code_snippet,
+    ):
+        try:
+            resp = call(findingArns=batch)
+            for flag in find_flags(resp):
+                print(flag)
+        except Exception as e:
+            print(f"{call.__name__} failed: {e}")
+```
+
+Set the creds first:
+
+```bash
+export AWS_ACCESS_KEY_ID='AKIAUAU4BU6X3RQ3FBP2'
+export AWS_SECRET_ACCESS_KEY='<the secret from the prompt>'
+export AWS_DEFAULT_REGION='us-east-1'
+python3 solve.py
+```
+
+[1]: https://r.jina.ai/https%3A//sts.us-east-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAUAU4BU6X3RQ3FBP2%2F20260427%2Fus-east-1%2Fsts%2Faws4_request&X-Amz-Date=20260427T192206Z&X-Amz-Expires=300&X-Amz-Signature=d0cfa9e99fa360c3e3f707697191d81623059fc9d08376d80f9122f64d34bbc0&X-Amz-SignedHeaders=host "https://r.jina.ai/https%3A//sts.us-east-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAUAU4BU6X3RQ3FBP2%2F20260427%2Fus-east-1%2Fsts%2Faws4_request&X-Amz-Date=20260427T192206Z&X-Amz-Expires=300&X-Amz-Signature=d0cfa9e99fa360c3e3f707697191d81623059fc9d08376d80f9122f64d34bbc0&X-Amz-SignedHeaders=host"
+[2]: https://docs.aws.amazon.com/inspector/v2/APIReference/API_ListFindings.html "ListFindings - Inspector"
